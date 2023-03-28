@@ -5,7 +5,7 @@ import Head from "next/head";
 import { api } from "~/utils/api";
 
 const Home: NextPage = () => {
-  const hello = api.example.hello.useQuery({ text: "from tRPC" });
+  const { data } = api.post.getAll.useQuery();
 
   const user = useUser();
 
@@ -20,6 +20,11 @@ const Home: NextPage = () => {
         <SignIn path="/sign-in" routing="path" signUpUrl="/sign-up" />
         {!user.isSignedIn && <SignInButton mode="modal" />}
         {user.isSignedIn && <SignOutButton />}
+        <div>
+          {data?.map((item, index) => (
+            <div key={index}>{item.content}</div>
+          ))}
+        </div>
       </main>
     </>
   );
