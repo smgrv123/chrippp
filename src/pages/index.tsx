@@ -1,4 +1,4 @@
-import { FC } from "react";
+import { FC, useState } from "react";
 import { type NextPage } from "next";
 import Head from "next/head";
 import Image from "next/image";
@@ -16,6 +16,15 @@ type PostViewType = RouterOutputs["post"]["getAll"][number];
 
 const CreatePostWizard = () => {
   const { user } = useUser();
+  const [input, setinput] = useState("");
+  const ctx = api.useContext();
+  const { mutate, isLoading: isPosting } = api.post.createPost.useMutation({
+    onSuccess: () => {
+      setinput("");
+      ctx.post.getAll.invalidate();
+    },
+  });
+
   if (!user) return null;
 
   return (
@@ -30,7 +39,11 @@ const CreatePostWizard = () => {
       <input
         placeholder="Type Some Emojis!!"
         className=" grow bg-transparent outline-none"
+        value={input}
+        onChange={(e) => setinput(e.target.value)}
+        disabled={isPosting}
       />
+      <button onClick={() => mutate({ content: input })}>Post</button>
     </div>
   );
 };
@@ -50,16 +63,16 @@ const PostView: FC<PostViewType> = ({ post, author }) => {
           <span>{`@${author.username}`}</span>
           <span className=" font-thin">{dayjs(post.createdAt).fromNow()}</span>
         </div>
-        <span>{post.content}</span>
+        <span className="text-2xl">{post.content}</span>
       </div>
     </div>
   );
 };
 
 const PostFeed = () => {
-  const { data, isLoading, isError } = api.post.getAll.useQuery();
+  const { data, isLoading: postLoading, isError } = api.post.getAll.useQuery();
 
-  if (isLoading) return <LoadingScreen />;
+  if (postLoading) return <LoadingScreen />;
 
   if (isError) return <div>Ops! Error</div>;
 
@@ -76,9 +89,9 @@ const PostFeed = () => {
 const Home: NextPage = () => {
   api.post.getAll.useQuery();
 
-  const { isSignedIn, isLoaded } = useUser();
+  const { isSignedIn, isLoaded: userLoaded } = useUser();
 
-  if (!isLoaded) return <div />;
+  if (!userLoaded) return <div />;
 
   return (
     <>
@@ -93,7 +106,7 @@ const Home: NextPage = () => {
             {!isSignedIn && <SignInButton mode="modal" />}
             {isSignedIn && <CreatePostWizard />}
           </div>
-        <PostFeed />
+          <PostFeed />
         </div>
       </main>
     </>
