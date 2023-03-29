@@ -1,4 +1,4 @@
-import { FC, useState } from "react";
+import { useState } from "react";
 import { type NextPage } from "next";
 import Head from "next/head";
 import Image from "next/image";
@@ -48,7 +48,7 @@ const CreatePostWizard = () => {
   );
 };
 
-const PostView: FC<PostViewType> = ({ post, author }) => {
+const PostView = ({ post, author }: PostViewType) => {
   return (
     <div className="flex flex-row gap-4 border-b border-slate-400 p-4">
       <Image
