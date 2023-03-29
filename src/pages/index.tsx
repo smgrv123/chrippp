@@ -7,7 +7,8 @@ import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 
 import { api } from "~/utils/api";
-import type {RouterOutputs} from "~/utils/api"
+import type { RouterOutputs } from "~/utils/api";
+import { LoadingScreen } from "~/components/loader";
 
 dayjs.extend(relativeTime);
 
@@ -47,7 +48,7 @@ const PostView: FC<PostViewType> = ({ post, author }) => {
       <div className=" flex flex-col">
         <div className=" flex gap-2 text-slate-400">
           <span>{`@${author.username}`}</span>
-          <span className=" font-thin" >{dayjs(post.createdAt).fromNow()}</span>
+          <span className=" font-thin">{dayjs(post.createdAt).fromNow()}</span>
         </div>
         <span>{post.content}</span>
       </div>
@@ -55,16 +56,29 @@ const PostView: FC<PostViewType> = ({ post, author }) => {
   );
 };
 
-const Home: NextPage = () => {
+const PostFeed = () => {
   const { data, isLoading, isError } = api.post.getAll.useQuery();
 
-  const user = useUser();
-
-  if (isLoading) return <div>Fetching Data....</div>;
+  if (isLoading) return <LoadingScreen />;
 
   if (isError) return <div>Ops! Error</div>;
 
   if (!data) return <div>No Posts Right now</div>;
+  return (
+    <div className="flex flex-col">
+      {data.map((item, index) => (
+        <PostView {...item} key={index} />
+      ))}
+    </div>
+  );
+};
+
+const Home: NextPage = () => {
+  api.post.getAll.useQuery();
+
+  const { isSignedIn, isLoaded } = useUser();
+
+  if (!isLoaded) return <div />;
 
   return (
     <>
@@ -76,14 +90,10 @@ const Home: NextPage = () => {
       <main className="flex h-screen justify-center">
         <div className="h-full w-full border-x border-slate-400 md:max-w-2xl ">
           <div className=" flex border-b border-slate-400 p-4 ">
-            {!user.isSignedIn && <SignInButton mode="modal" />}
-            {user.isSignedIn && <CreatePostWizard />}
+            {!isSignedIn && <SignInButton mode="modal" />}
+            {isSignedIn && <CreatePostWizard />}
           </div>
-          <div className="flex flex-col">
-            {[...data, ...data]?.map((item, index) => (
-              <PostView {...item} key={index} />
-            ))}
-          </div>
+        <PostFeed />
         </div>
       </main>
     </>
