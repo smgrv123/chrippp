@@ -8,7 +8,8 @@ import relativeTime from "dayjs/plugin/relativeTime";
 
 import { api } from "~/utils/api";
 import type { RouterOutputs } from "~/utils/api";
-import { LoadingScreen } from "~/components/loader";
+import { Loader, LoadingScreen } from "~/components/loader";
+import toast from "react-hot-toast";
 
 dayjs.extend(relativeTime);
 
@@ -22,6 +23,13 @@ const CreatePostWizard = () => {
     onSuccess: () => {
       setinput("");
       void ctx.post.getAll.invalidate();
+    },
+    onError: (e) => {
+      const error = e.data?.zodError?.fieldErrors.content;
+      if (error && error[0]) {
+        return toast.error(error[0]);
+      }
+      toast.error("Failed to Post! Please try again");
     },
   });
 
@@ -41,9 +49,22 @@ const CreatePostWizard = () => {
         className=" grow bg-transparent outline-none"
         value={input}
         onChange={(e) => setinput(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && input.length > 1) {
+            e.preventDefault();
+            mutate({ content: input });
+          }
+        }}
         disabled={isPosting}
       />
-      <button onClick={() => mutate({ content: input })}>Post</button>
+      {input.length > 1 && !isPosting && (
+        <button onClick={() => mutate({ content: input })}>Post</button>
+      )}
+      {isPosting && (
+        <div className="flex items-center justify-center">
+          <Loader size={20} />
+        </div>
+      )}
     </div>
   );
 };
