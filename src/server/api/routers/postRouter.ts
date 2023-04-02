@@ -8,7 +8,35 @@ import { TRPCError } from "@trpc/server";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import { filterUserForClient } from "~/server/helper/filter";
+import { Post } from "@prisma/client";
 
+const addUserToPosts = async (posts: Post[]) => {
+  const users = (
+    await clerkClient.users.getUserList({
+      userId: posts.map((item) => item.authorId),
+      limit: 100,
+    })
+  ).map(filterUserForClient);
+
+  return posts.map((post) => {
+    const author = users.find((user) => user.id === post.authorId);
+
+    if (!author || !author.username) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Author not found for post",
+      });
+    }
+
+    return {
+      post,
+      author: {
+        ...author,
+        username: author.username,
+      },
+    };
+  });
+};
 
 // ? 5 requests per minute
 const ratelimit = new Ratelimit({
@@ -23,32 +51,7 @@ export const postRouter = createTRPCRouter({
       take: 100,
       orderBy: [{ createdAt: "desc" }],
     });
-
-    const users = (
-      await clerkClient.users.getUserList({
-        userId: posts.map((item) => item.authorId),
-        limit: 100,
-      })
-    ).map(filterUserForClient);
-
-    return posts.map((post) => {
-      const author = users.find((user) => user.id === post.authorId);
-
-      if (!author || !author.username) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Author not found for post",
-        });
-      }
-
-      return {
-        post,
-        author: {
-          ...author,
-          username: author.username,
-        },
-      };
-    });
+    return addUserToPosts(posts)
   }),
 
   createPost: privateProcedure
@@ -72,4 +75,16 @@ export const postRouter = createTRPCRouter({
       });
       return createPost;
     }),
+
+  getPostByUserID: publicProcedure
+    .input(z.object({ userId: z.string() }))
+    .query(({ ctx, input }) =>
+      ctx.prisma.post.findMany({
+        where: {
+          authorId: input.userId,
+        },
+        take: 100,
+        orderBy: [{ createdAt: "desc" }],
+      }).then(addUserToPosts)
+    ),
 });
